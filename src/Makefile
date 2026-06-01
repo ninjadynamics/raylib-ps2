@@ -905,8 +905,22 @@ ifeq ($(PLATFORM),PLATFORM_DREAMCAST)
 endif
 
 ifeq ($(PLATFORM),PLATFORM_PSP)
-    CFLAGS = -Wl,-q -Wall -Wno-incompatible-pointer-types -Wno-pointer-sign -O3 -nostartfiles -D__PSP__ -D$(PLATFORM) -D$(GRAPHICS) 
+    CFLAGS = -Wl,-q -Wall -Wno-incompatible-pointer-types -Wno-pointer-sign -O3 -nostartfiles -D__PSP__ -D$(PLATFORM) -D$(GRAPHICS)
     INCLUDE_PATHS = -I. -Iinclude -I$(PSPDEV)/psp/include -I$(PSPDEV)/psp/sdk/include
+endif
+
+ifeq ($(PLATFORM),PLATFORM_PLAYSTATION2)
+    # Append (don't replace) shared CFLAGS so -fno-strict-aliasing / -D_GNU_SOURCE survive.
+    #   -D_EE                      : ps2sdk EE-side headers require it
+    #   -DNO_VU0_VECTORS -DNO_ASM  : skip ps2s/vector_common.h VU0 inline asm that gcc 15 rejects
+    #   -DSUPPORT_GESTURES_SYSTEM=0: rgestures.h sparse C99 designated init can't compile as C++
+    #   -fpermissive               : downgrade m3d.h implicit pointer conversions
+    #   -Umips                     : MIPS toolchain predefines mips=1, clobbering `int *mips`
+    CFLAGS += -G0 -D_EE \
+              -DNO_VU0_VECTORS -DNO_ASM \
+              -DSUPPORT_GESTURES_SYSTEM=0 \
+              -fpermissive -Umips
+    INCLUDE_PATHS = -I. -I$(PS2SDK)/ports/include -I$(PS2SDK)/common/include -I$(PS2SDK)/ee/include $(EXTRA_INCLUDE_PATHS)
 endif
 
 ifeq ($(PLATFORM),PLATFORM_PSP_SDL)

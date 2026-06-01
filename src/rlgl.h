@@ -764,7 +764,7 @@ RLAPI void rlDrawVertexArrayElementsInstanced(int offset, int count, const void 
 void rlLoadTextureN64(const void *data, int width, int height, int format, int mipmapCount);
 #endif
 #if defined(PLATFORM_PLAYSTATION2)
-void rlLoadTexturePS2(unsigned int id, const void *data, int width, int height);
+void rlLoadTexturePS2(unsigned int id, const void *data, int width, int height, int format);
 #endif
 RLAPI unsigned int rlLoadTexture(const void *data, int width, int height, int format, int mipmapCount); // Load texture data
 RLAPI unsigned int rlLoadTextureDepth(int width, int height, bool useRenderBuffer); // Load depth texture/renderbuffer (to be attached to fbo)
@@ -3492,8 +3492,8 @@ unsigned int rlLoadTexture(const void *data, int width, int height, int format, 
     rlLoadTextureN64(data,width,height,format,mipmapCount);
 #endif
 #if defined(PLATFORM_PLAYSTATION2)
-    rlLoadTexturePS2(id, data, width, height);
-    TRACELOG(RL_LOG_INFO, "TEXTURE: [ID %u] PS2 upload %dx%d RGBA8", id, width, height);
+    rlLoadTexturePS2(id, data, width, height, format);
+    TRACELOG(RL_LOG_INFO, "TEXTURE: [ID %u] PS2 upload %dx%d (fmt %d)", id, width, height, format);
 #endif
     // At this point texture is loaded in GPU and texture parameters configured
 

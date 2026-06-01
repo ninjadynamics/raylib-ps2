@@ -3183,19 +3183,17 @@ char *EncodeDataBase64(const unsigned char *data, int dataSize, int *outputSize)
 // Decode Base64 string (expected NULL terminated)
 unsigned char *DecodeDataBase64(const char *text, int *outputSize)
 {
-    // Base64 decode table
-    // NOTE: Following ASCII order [0..255] assigning the expected sixtet value to
-    // every character in the corresponding ASCII position
-    static const unsigned char base64DecodeTable[256] = {
-        ['A'] =  0, ['B'] =  1, ['C'] =  2, ['D'] =  3, ['E'] =  4, ['F'] =  5, ['G'] =  6, ['H'] =  7,
-        ['I'] =  8, ['J'] =  9, ['K'] = 10, ['L'] = 11, ['M'] = 12, ['N'] = 13, ['O'] = 14, ['P'] = 15,
-        ['Q'] = 16, ['R'] = 17, ['S'] = 18, ['T'] = 19, ['U'] = 20, ['V'] = 21, ['W'] = 22, ['X'] = 23, ['Y'] = 24, ['Z'] = 25,
-        ['a'] = 26, ['b'] = 27, ['c'] = 28, ['d'] = 29, ['e'] = 30, ['f'] = 31, ['g'] = 32, ['h'] = 33,
-        ['i'] = 34, ['j'] = 35, ['k'] = 36, ['l'] = 37, ['m'] = 38, ['n'] = 39, ['o'] = 40, ['p'] = 41,
-        ['q'] = 42, ['r'] = 43, ['s'] = 44, ['t'] = 45, ['u'] = 46, ['v'] = 47, ['w'] = 48, ['x'] = 49, ['y'] = 50, ['z'] = 51,
-        ['0'] = 52, ['1'] = 53, ['2'] = 54, ['3'] = 55, ['4'] = 56, ['5'] = 57, ['6'] = 58, ['7'] = 59,
-        ['8'] = 60, ['9'] = 61, ['+'] = 62, ['/'] = 63
-    };
+    // Base64 decode table — built at first call so this compiles under C++
+    // (sparse C99 designated init isn't supported by gcc's C++ frontend; the
+    // PS2 build compiles rcore.c as C++ via the bundled platform TU).
+    static unsigned char base64DecodeTable[256] = { 0 };
+    static int base64DecodeTableInit = 0;
+    if (!base64DecodeTableInit) {
+        static const char base64EncodeAlphabet[] =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        for (int b = 0; b < 64; b++) base64DecodeTable[(unsigned char)base64EncodeAlphabet[b]] = (unsigned char)b;
+        base64DecodeTableInit = 1;
+    }
 
     *outputSize = 0;
     if (text == NULL) return NULL;

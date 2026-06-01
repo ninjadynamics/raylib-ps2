@@ -14,7 +14,7 @@
 *       - Improvement 02
 *
 *   ADDITIONAL NOTES:
-*       - Port done by Antonio Jose Ramos Marquez aka bigboss @psxdev		
+*       - Port done by Antonio Jose Ramos Marquez aka bigboss @psxdev
 *
 *   CONFIGURATION:
 *       #define RCORE_PLATFORM_CUSTOM_FLAG
@@ -53,7 +53,7 @@
 #include <string.h>
 #include <libpad.h>
 #include <GL/gl.h>
-//#include <GL/glut.h>
+#include <GL/glut.h>
 
 /* ps2stuff */
 #include <ps2s/core.h>
@@ -386,9 +386,9 @@ void DisableCursor(void)
 int    gVBlankDivisor = 1;     // 1=~60 (NTSC), 2=~30, 3=~20, 4=~15 ...
 double gRefreshHz     = 59.94; // overwritten to 50.0 on PAL
 
-static inline void Ps2SetRefreshHz(bool pal) 
-{ 
-    gRefreshHz = pal ? 50.0 : 59.94; 
+static inline void Ps2SetRefreshHz(bool pal)
+{
+    gRefreshHz = pal ? 50.0 : 59.94;
 }
 
 void SetTargetFPSPS2(int fps)
@@ -413,12 +413,12 @@ void SwapScreenBuffer(void)
     if (!firstTime)
     {
         pglFinishRenderingGeometry(PGL_DONT_FORCE_IMMEDIATE_STOP);
-    }    
+    }
     else
     {
         firstTime = false;
     }
-    for (int i = 0; i < gVBlankDivisor; ++i) 
+    for (int i = 0; i < gVBlankDivisor; ++i)
     {
         pglWaitForVSync();
     }
@@ -432,7 +432,7 @@ void SwapScreenBuffer(void)
 
 // Get elapsed time measure in seconds since InitTimer()
 double GetTime(void)
-{   
+{
     double time=(double)(clock() - CORE.Time.base)*1e-6;
     return time;
 }
@@ -480,7 +480,7 @@ void SetMouseCursor(int cursor)
 // Register all input events
 void PollInputEvents(void)
 {
-#if defined(SUPPORT_GESTURES_SYSTEM)
+#if SUPPORT_GESTURES_SYSTEM
     // NOTE: Gestures update must be called every frame to reset gestures correctly
     // because ProcessGestureEvent() is just called on an event, not every frame
     UpdateGestures();
@@ -506,9 +506,9 @@ void PollInputEvents(void)
 
 
     int ret=padGetState(port, slot);
-    while((ret != PAD_STATE_STABLE) && (ret != PAD_STATE_FINDCTP1)) 
+    while((ret != PAD_STATE_STABLE) && (ret != PAD_STATE_FINDCTP1))
     {
-        if(ret==PAD_STATE_DISCONN) 
+        if(ret==PAD_STATE_DISCONN)
         {
             TRACELOG(LOG_INFO,"Pad(%d, %d) is disconnected", port, slot);
         }
@@ -517,26 +517,26 @@ void PollInputEvents(void)
     CORE.Input.Gamepad.ready[port] = true;
 
     // Register previous gamepad button states
-    for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++) 
+    for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++)
         CORE.Input.Gamepad.previousButtonState[port][k] = CORE.Input.Gamepad.currentButtonState[port][k];
 
 
     ret = padRead(port, slot, &buttons); // port, slot, buttons
 
-    if (ret != 0) 
+    if (ret != 0)
     {
         paddata = 0xffff ^ buttons.btns;
         new_pad = paddata & ~old_pad;
         old_pad = paddata;
         //MapControls(port, buttons);
-        for (int j = 0; j < sizeof(buttonMap) / sizeof(buttonMap[0]); j++) 
+        for (int j = 0; j < sizeof(buttonMap) / sizeof(buttonMap[0]); j++)
         {
             if (paddata & buttonMap[j].ps2Button)
             {
                 CORE.Input.Gamepad.currentButtonState[port][buttonMap[j].raylibButton] = 1;
                 CORE.Input.Gamepad.lastButtonPressed = buttonMap[j].raylibButton;
-            } 
-            else 
+            }
+            else
             {
                 CORE.Input.Gamepad.currentButtonState[port][buttonMap[j].raylibButton] = 0;
             }
@@ -546,22 +546,22 @@ void PollInputEvents(void)
 
     }
 
-        
+
 
       /*  // Directions
-        if(new_pad & PAD_LEFT) 
+        if(new_pad & PAD_LEFT)
         {
             TRACELOG(LOG_INFO,"LEFT");
         }
-        if(new_pad & PAD_DOWN) 
+        if(new_pad & PAD_DOWN)
         {
             TRACELOG(LOG_INFO,"DOWN");
         }
-        if(new_pad & PAD_RIGHT) 
+        if(new_pad & PAD_RIGHT)
         {
             TRACELOG(LOG_INFO,"RIGHT");
         }
-        if(new_pad & PAD_UP) 
+        if(new_pad & PAD_UP)
         {
             TRACELOG(LOG_INFO,"UP");
         }
@@ -654,17 +654,17 @@ void PollInputEvents(void)
 
     // TODO: Poll input events for current plaform
 }
-    
+
 
 void CustomLog(int msgType, const char *text, va_list args)
 {
     char buffer[1024] = { 0 };
 
-   
+
     vsnprintf(buffer,1024, text, args);
     buffer[1024-1] = 0;
-    
-    
+
+
     switch (msgType)
     {
         case LOG_TRACE: printf("[EE][TRACE]: %s\n",buffer); break;
@@ -694,7 +694,7 @@ static void initGsMemoryForRaylib(bool pal)
         frame_slot_1 = pglAddGsMemSlot(70, 70, GS::kPsm32);
         depth_slot   = pglAddGsMemSlot(140, 70, GS::kPsmz24);
     }
-    
+
     // lock these slots so that they aren't allocated by the memory manager
     pglLockGsMemSlot(frame_slot_0);
     pglLockGsMemSlot(frame_slot_1);
@@ -715,7 +715,7 @@ static void initGsMemoryForRaylib(bool pal)
         frame_area_1 = pglCreateGsMemArea(640, 224, GS::kPsm24);
         depth_area   = pglCreateGsMemArea(640, 224, GS::kPsmz24);
     }
-    
+
     // bind the areas to the slots we created above
     pglBindGsMemAreaToSlot(frame_area_0, frame_slot_0);
     pglBindGsMemAreaToSlot(frame_area_1, frame_slot_1);
@@ -755,7 +755,7 @@ static void initGsMemoryForRaylib(bool pal)
     if(pal)
     {
         pglAddGsMemSlot(240, 2, GS::kPsm8);
-    
+
         // 64x32
         pglAddGsMemSlot(242, 1, GS::kPsm32);
         pglAddGsMemSlot(243, 1, GS::kPsm32);
@@ -765,7 +765,7 @@ static void initGsMemoryForRaylib(bool pal)
         pglAddGsMemSlot(247, 1, GS::kPsm32);
         pglAddGsMemSlot(248, 1, GS::kPsm32);
         pglAddGsMemSlot(249, 1, GS::kPsm32);
-    
+
         // 64x64
         pglAddGsMemSlot(250, 2, GS::kPsm32);
         pglAddGsMemSlot(252, 2, GS::kPsm32);
@@ -782,7 +782,7 @@ static void initGsMemoryForRaylib(bool pal)
         pglAddGsMemSlot(290, 8, GS::kPsm32);
         pglAddGsMemSlot(298, 8, GS::kPsm32);
         pglAddGsMemSlot(306, 8, GS::kPsm32);
-    
+
         // 256x256
         pglAddGsMemSlot(314, 32, GS::kPsm32);
         pglAddGsMemSlot(346, 32, GS::kPsm32);
@@ -829,7 +829,8 @@ static void initGsMemoryForRaylib(bool pal)
         pglAddGsMemSlot(412, 64, GS::kPsm32);
 
     }
-    //pglPrintGsMemAllocation();
+    printf("GS Memory initialized for raylib:\n");
+    pglPrintGsMemAllocation();
 }
 //----------------------------------------------------------------------------------
 // Module Internal Functions Definition
@@ -873,7 +874,7 @@ int initializePad(int port, int slot)
     modes = padInfoMode(port, slot, PAD_MODETABLE, -1);
     TRACELOG(LOG_INFO,"The device has %d modes", modes);
 
-    
+
     TRACELOG(LOG_INFO,"It is currently using mode %d",padInfoMode(port, slot, PAD_MODECURID, 0));
 
     // If modes == 0, this is not a Dual shock controller
@@ -918,7 +919,7 @@ int initializePad(int port, int slot)
     actuators = padInfoAct(port, slot, -1, 0);
     TRACELOG(LOG_INFO,"# of actuators: %d",actuators);
 
-    if (actuators != 0) 
+    if (actuators != 0)
     {
         actAlign[0] = 0;   // Enable small engine
         actAlign[1] = 1;   // Enable big engine
@@ -930,7 +931,7 @@ int initializePad(int port, int slot)
         waitPadReady(port, slot);
         TRACELOG(LOG_INFO,"padSetActAlign: %d",padSetActAlign(port, slot, actAlign));
     }
-    else 
+    else
     {
         TRACELOG(LOG_INFO,"Did not find any actuators.");
     }
@@ -939,11 +940,54 @@ int initializePad(int port, int slot)
 
     return 1;
 }
-void rlLoadTexturePS2(unsigned int id, const void *data, int width, int height)
+void rlLoadTexturePS2(unsigned int id, const void *data, int width, int height, int format)
 {
-    const size_t imageSize = (size_t)width * (size_t)height * 4u;
+    const size_t pixels = (size_t)width * (size_t)height;
+    const size_t imageSize = pixels * 4u;
     uint8_t *texels = (uint8_t*)pglutAllocDmaMem(imageSize);
-    memcpy(texels, data, imageSize);
+
+    // GS upload path below is RGBA8 only — convert R8G8B8 (and grayscale
+    // variants) up to 4 bytes/pixel here. Without this, a memcpy(width*height*4)
+    // reads past the end of a 3-byte source buffer (e.g. R8G8B8 PNGs embedded
+    // in a .glb that have no alpha channel) and scrambles the texture.
+    if (format == RL_PIXELFORMAT_UNCOMPRESSED_R8G8B8)
+    {
+        const uint8_t *src = (const uint8_t *)data;
+        for (size_t i = 0; i < pixels; i++)
+        {
+            texels[i*4 + 0] = src[i*3 + 0];
+            texels[i*4 + 1] = src[i*3 + 1];
+            texels[i*4 + 2] = src[i*3 + 2];
+            texels[i*4 + 3] = 0xFF;
+        }
+    }
+    else if (format == RL_PIXELFORMAT_UNCOMPRESSED_GRAYSCALE)
+    {
+        const uint8_t *src = (const uint8_t *)data;
+        for (size_t i = 0; i < pixels; i++)
+        {
+            texels[i*4 + 0] = src[i];
+            texels[i*4 + 1] = src[i];
+            texels[i*4 + 2] = src[i];
+            texels[i*4 + 3] = 0xFF;
+        }
+    }
+    else if (format == RL_PIXELFORMAT_UNCOMPRESSED_GRAY_ALPHA)
+    {
+        const uint8_t *src = (const uint8_t *)data;
+        for (size_t i = 0; i < pixels; i++)
+        {
+            texels[i*4 + 0] = src[i*2 + 0];
+            texels[i*4 + 1] = src[i*2 + 0];
+            texels[i*4 + 2] = src[i*2 + 0];
+            texels[i*4 + 3] = src[i*2 + 1];
+        }
+    }
+    else
+    {
+        // Default: assume RGBA8 source (already matches upload format).
+        memcpy(texels, data, imageSize);
+    }
 
     glBindTexture(GL_TEXTURE_2D, id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -985,14 +1029,14 @@ int InitPlatform(void)
         TRACELOG(LOG_ERROR,"padOpenPort failed: %d", ret);
         return -1;
     }
-    
-    if(!initializePad(port, slot)) 
+
+    if(!initializePad(port, slot))
     {
         TRACELOG(LOG_ERROR,"pad initalization failed!");
         return -1;
     }
-    
-    TRACELOG(LOG_INFO, "Initializing raylib %s", RAYLIB_VERSION);
+
+    TRACELOG(LOG_INFO, "Initializing MODIFIED LOCAL raylib %s [2026.06.01 08:39]", RAYLIB_VERSION);
     TRACELOG(LOG_INFO, "Platform backend: PLAYSTATION2");
     TRACELOG(LOG_INFO, "PLATFORM: PlayStation 2 init");
     bool pal = false;
@@ -1028,7 +1072,7 @@ int InitPlatform(void)
     }
 
     Ps2SetRefreshHz(pal);
-   
+
 
 
     //CORE.Window.fullscreen = true;
@@ -1049,19 +1093,19 @@ int InitPlatform(void)
     CORE.Input.Mouse.scale = (Vector2){ 1.0f, 1.0f };
 
 
-    
+
 
     // At this point we need to manage render size vs screen size
     // NOTE: This function use and modify global module variables:
     //  -> CORE.Window.screen.width/CORE.Window.screen.height
     //  -> CORE.Window.render.width/CORE.Window.render.height
     //  -> CORE.Window.screenScale
-    SetupFramebuffer(CORE.Window.display.width, CORE.Window.display.height);
+    //SetupFramebuffer(CORE.Window.display.width, CORE.Window.display.height);
 
     //ANativeWindow_setBuffersGeometry(platform.app->window, CORE.Window.render.width, CORE.Window.render.height, displayFormat);
     //ANativeWindow_setBuffersGeometry(platform.app->window, 0, 0, displayFormat);       // Force use of native display size
 
-    
+
     {
         CORE.Window.render.width = CORE.Window.screen.width;
         CORE.Window.render.height = CORE.Window.screen.height;
