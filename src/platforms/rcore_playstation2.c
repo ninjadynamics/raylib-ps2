@@ -993,8 +993,10 @@ void rlLoadTexturePS2(unsigned int id, const void *data, int width, int height, 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    // Default to bilinear like the other raylib platforms — point filtering
+    // is the exception (e.g. pixel-font atlases), reached via SetTextureFilter.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texels);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -1036,7 +1038,7 @@ int InitPlatform(void)
         return -1;
     }
 
-    TRACELOG(LOG_INFO, "Initializing MODIFIED LOCAL raylib %s [2026.06.01 08:39]", RAYLIB_VERSION);
+    TRACELOG(LOG_INFO, "Initializing MODIFIED LOCAL raylib %s [2026.06.01 09:35]", RAYLIB_VERSION);
     TRACELOG(LOG_INFO, "Platform backend: PLAYSTATION2");
     TRACELOG(LOG_INFO, "PLATFORM: PlayStation 2 init");
     bool pal = false;
