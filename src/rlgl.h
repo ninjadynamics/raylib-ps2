@@ -1780,6 +1780,26 @@ void rlTextureParameters(unsigned int id, int param, int value)
 {
     glBindTexture(GL_TEXTURE_2D, id);
 
+#if defined(PLATFORM_PLAYSTATION2)
+    // ps2gl's GL_* enum values don't match canonical OpenGL for wrap modes
+    // and mipmap filters — e.g. ps2gl's GL_REPEAT is 0x2900 while raylib's
+    // RL_TEXTURE_WRAP_REPEAT is 0x2901 (canonical GL_REPEAT, which on ps2gl
+    // happens to be GL_CLAMP). Forwarding raylib's constant straight to
+    // glTexParameteri silently sets the WRONG mode. Translate first.
+    switch (value)
+    {
+        case RL_TEXTURE_WRAP_REPEAT:               value = GL_REPEAT;                break;
+        case RL_TEXTURE_WRAP_CLAMP:                value = GL_CLAMP;                 break;
+        case RL_TEXTURE_WRAP_MIRROR_REPEAT:        value = GL_REPEAT;                break;  // ps2gl: no mirror
+        case RL_TEXTURE_WRAP_MIRROR_CLAMP:         value = GL_CLAMP;                 break;  // ps2gl: no mirror
+        case RL_TEXTURE_FILTER_MIP_NEAREST:        value = GL_NEAREST_MIPMAP_NEAREST; break;
+        case RL_TEXTURE_FILTER_LINEAR_MIP_NEAREST: value = GL_LINEAR_MIPMAP_NEAREST;  break;
+        case RL_TEXTURE_FILTER_NEAREST_MIP_LINEAR: value = GL_NEAREST_MIPMAP_LINEAR;  break;
+        case RL_TEXTURE_FILTER_MIP_LINEAR:         value = GL_LINEAR_MIPMAP_LINEAR;   break;
+        default: break;  // RL_TEXTURE_FILTER_{NEAREST,LINEAR} (0x2600/0x2601) match ps2gl directly
+    }
+#endif
+
     switch (param)
     {
         case RL_TEXTURE_WRAP_S:
