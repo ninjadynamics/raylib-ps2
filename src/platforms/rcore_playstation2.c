@@ -1038,20 +1038,37 @@ int InitPlatform(void)
         return -1;
     }
 
-    TRACELOG(LOG_INFO, "Initializing MODIFIED LOCAL raylib %s [2026.06.01 10:20]", RAYLIB_VERSION);
+    TRACELOG(LOG_INFO, "Initializing MODIFIED LOCAL raylib %s [2026.06.03 09:23]", RAYLIB_VERSION);
     TRACELOG(LOG_INFO, "Platform backend: PLAYSTATION2");
     TRACELOG(LOG_INFO, "PLATFORM: PlayStation 2 init");
     bool pal = false;
     if (!pglHasLibraryBeenInitted()) {
-        // reset the machine
-        //      sceDevVif0Reset();
-        //      sceDevVu0Reset();
-        //      sceDmaReset(1);
-        //      sceGsResetPath();
+        // --- Hard reset of the render-path hardware -------------------------
+        // ps2link reloads the ELF without power-cycling the DMAC/VIF/GIF, so a
+        // prior run that died mid-transfer can leave a render DMA channel's STR
+        // bit set or the GIF PATH busy. The next large texture upload then
+        // collides with the stale state and hangs — a cold boot works, but it
+        // dies after N reloads. The `sceDev*` reset stubs below were never wired
+        // up; these are the ps2sdk register equivalents. Plain 32-bit EE I/O
+        // writes. SIF channels 5/6/7 (the IOP link carrying ps2link stdio) and
+        // the unused IPU/SPR channels are deliberately left alone.
+        //      sceDevVif0Reset(); sceDevVu0Reset(); sceDmaReset(1); sceGsResetPath();
+        printf("\n>>>>>> HARD RESET: scrubbing render-path HW (VIF/GIF/DMAC) <<<<<<\n\n");
+        *(volatile unsigned int *)0x10003810 = 1;       // VIF0_FBRST: RST
+        *(volatile unsigned int *)0x10003C10 = 1;       // VIF1_FBRST: RST
 
         // Reset the GIF. OSDSYS leaves PATH3 busy, that ends up having
         // our PATH1/2 transfers ignored by the GIF.
         *GIF::Registers::ctrl = 1;
+
+        // Clear the render DMA channels (CHCR) so a stale STR bit can't linger,
+        // then write-1-clear their D_STAT interrupt bits.
+        *(volatile unsigned int *)0x10008000 = 0;       // DMAC ch0 (VIF0) CHCR
+        *(volatile unsigned int *)0x10009000 = 0;       // DMAC ch1 (VIF1) CHCR
+        *(volatile unsigned int *)0x1000A000 = 0;       // DMAC ch2 (GIF)  CHCR
+        *(volatile unsigned int *)0x1000E010 = 0x0007;  // D_STAT: W1C ch0/1/2
+        asm volatile("sync.l\n\tsync.p\n\t" ::: "memory");
+        printf(">>>>>> HARD RESET: done <<<<<<\n\n");
 
         //      sceGsResetGraph(0, SCE_GS_INTERLACE, SCE_GS_NTSC, SCE_GS_FRAME);
         //SetGsCrt(1 /* interlaced */, 2 /* ntsc */, 1 /* frame */);
