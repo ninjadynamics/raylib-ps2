@@ -1038,7 +1038,7 @@ int InitPlatform(void)
         return -1;
     }
 
-    TRACELOG(LOG_INFO, "Initializing MODIFIED LOCAL raylib %s [2026.06.03 09:23]", RAYLIB_VERSION);
+    TRACELOG(LOG_INFO, "Initializing MODIFIED LOCAL raylib %s [2026.06.04 01:58]", RAYLIB_VERSION);
     TRACELOG(LOG_INFO, "Platform backend: PLAYSTATION2");
     TRACELOG(LOG_INFO, "PLATFORM: PlayStation 2 init");
     bool pal = false;
@@ -1076,8 +1076,13 @@ int InitPlatform(void)
 
 
         TRACELOG(LOG_INFO,"ps2gl library has not been initialized by the user; using default values.");
-        //int immBufferVertexSize = 64 * 1024;
-        int immBufferVertexSize = 128 * 1024;
+        // ps2gl allocates double-buffered immediate-geometry arrays
+        // (vertex+normal+texcoord+color) sized to this many qwords — 128*1024 was
+        // ~15.6 MB of EE RAM for buffers the game never fills (its software-clipped
+        // scene is a few thousand verts/frame). 32*1024 is ~3.9 MB and still has
+        // ~10x headroom. If geometry ever goes missing/corrupt, this overflowed —
+        // bump it back up.
+        int immBufferVertexSize = 32 * 1024;
 
         pglInit(immBufferVertexSize, 1000);
     }
