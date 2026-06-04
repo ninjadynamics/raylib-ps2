@@ -1050,7 +1050,7 @@ int InitPlatform(void)
         return -1;
     }
 
-    TRACELOG(LOG_INFO, "[ CANARY ] Initializing MODIFIED LOCAL raylib %s [2026.06.04 12:28]", RAYLIB_VERSION);
+    TRACELOG(LOG_INFO, "[ CANARY ] Initializing MODIFIED LOCAL raylib %s [2026.06.04 23:27]", RAYLIB_VERSION);
     TRACELOG(LOG_INFO, "Platform backend: PLAYSTATION2");
     TRACELOG(LOG_INFO, "PLATFORM: PlayStation 2 init");
     bool pal = false;
