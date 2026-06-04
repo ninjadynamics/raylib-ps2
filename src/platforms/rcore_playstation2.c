@@ -1001,6 +1001,18 @@ void rlLoadTexturePS2(unsigned int id, const void *data, int width, int height, 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texels);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
+// ps2gl immediate-geometry buffer size (qwords) for the fallback pglInit in
+// InitPlatform. The app owns this number (the right size depends on its peak
+// software-clipped vertex count) and sets it via Ps2SetImmBufferVerts() before
+// InitWindow; the default below is a safe fallback when the app doesn't.
+static int Ps2ImmBufferVerts = 32 * 1024;
+// C linkage: rcore is built with the C++ compiler here (CC = EE_CXX), so without
+// this the symbol mangles and the C game can't resolve its extern call.
+#ifdef __cplusplus
+extern "C"
+#endif
+void Ps2SetImmBufferVerts(int qwords) { if (qwords > 0) Ps2ImmBufferVerts = qwords; }
+
 // Initialize platform: graphics, inputs and more
 int InitPlatform(void)
 {
@@ -1038,7 +1050,7 @@ int InitPlatform(void)
         return -1;
     }
 
-    TRACELOG(LOG_INFO, "[ CANARY ] Initializing MODIFIED LOCAL raylib %s [2026.06.04 11:50]", RAYLIB_VERSION);
+    TRACELOG(LOG_INFO, "[ CANARY ] Initializing MODIFIED LOCAL raylib %s [2026.06.04 12:28]", RAYLIB_VERSION);
     TRACELOG(LOG_INFO, "Platform backend: PLAYSTATION2");
     TRACELOG(LOG_INFO, "PLATFORM: PlayStation 2 init");
     bool pal = false;
@@ -1077,14 +1089,11 @@ int InitPlatform(void)
 
         TRACELOG(LOG_INFO,"ps2gl library has not been initialized by the user; using default values.");
         // ps2gl allocates double-buffered immediate-geometry arrays
-        // (vertex+normal+texcoord+color) sized to this many qwords — 128*1024 was
-        // ~15.6 MB of EE RAM for buffers the game never fills (its software-clipped
-        // scene is a few thousand verts/frame). 32*1024 is ~3.9 MB and still has
-        // ~10x headroom. If geometry ever goes missing/corrupt, this overflowed —
-        // bump it back up.
-        int immBufferVertexSize = 32 * 1024;
-
-        pglInit(immBufferVertexSize, 1000);
+        // (vertex+normal+texcoord+color) sized to Ps2ImmBufferVerts qwords. The
+        // app owns this number and sets it via Ps2SetImmBufferVerts() before
+        // InitWindow (see the definition above for the default/rationale). If
+        // geometry ever goes missing/corrupt, the buffer overflowed — raise it.
+        pglInit(Ps2ImmBufferVerts, 1000);
     }
 
     // does gs memory need to be initialized?
