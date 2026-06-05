@@ -243,6 +243,31 @@ void SetWindowSize(int width, int height)
     TRACELOG(LOG_WARNING, "SetWindowSize() not available on target platform");
 }
 
+// ADDITIVE (does not touch the default GS init): re-point raylib's screen /
+// render / viewport state at a new resolution after the game has rebuilt the GS
+// framebuffer to a different size (e.g. a runtime 448i <-> 480p switch). Mirrors
+// what SetupViewport would do. SetWindowSize is a no-op on PS2, so the game
+// drives this directly. extern "C" so the C game backend can call it.
+#ifdef __cplusplus
+extern "C"
+#endif
+void PS2SetResolution(int width, int height)
+{
+    CORE.Window.screen.width      = width;
+    CORE.Window.screen.height     = height;
+    CORE.Window.render.width      = width;
+    CORE.Window.render.height     = height;
+    CORE.Window.currentFbo.width  = width;
+    CORE.Window.currentFbo.height = height;
+
+    rlViewport(0, 0, width, height);
+    rlMatrixMode(RL_PROJECTION);
+    rlLoadIdentity();
+    rlOrtho(0.0, (double)width, (double)height, 0.0, 0.0, 1.0);
+    rlMatrixMode(RL_MODELVIEW);
+    rlLoadIdentity();
+}
+
 // Set window opacity, value opacity is between 0.0 and 1.0
 void SetWindowOpacity(float opacity)
 {
@@ -1050,7 +1075,7 @@ int InitPlatform(void)
         return -1;
     }
 
-    TRACELOG(LOG_INFO, "[ CANARY ] Initializing MODIFIED LOCAL raylib %s [2026.06.04 23:27]", RAYLIB_VERSION);
+    TRACELOG(LOG_INFO, "[ CANARY ] Initializing MODIFIED LOCAL raylib %s [2026.06.05 17:35]", RAYLIB_VERSION);
     TRACELOG(LOG_INFO, "Platform backend: PLAYSTATION2");
     TRACELOG(LOG_INFO, "PLATFORM: PlayStation 2 init");
     bool pal = false;
