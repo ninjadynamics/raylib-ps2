@@ -169,8 +169,16 @@
 //#define RL_DEFAULT_BATCH_MAX_TEXTURE_UNITS     4      // Maximum number of textures units that can be activated on batch drawing (SetShaderValueTexture())
 //#define RL_MAX_MATRIX_STACK_SIZE              32      // Maximum size of internal Matrix stack
 //#define RL_MAX_SHADER_LOCATIONS               32      // Maximum number of shader locations supported
-//#define RL_CULL_DISTANCE_NEAR                  0.05   // Default projection matrix near cull distance
-//#define RL_CULL_DISTANCE_FAR                4000.0    // Default projection matrix far cull distance
+// PS2: GL hyperbolic depth spends its precision NEAR the camera — the stock
+// 0.05..4000 range (80000:1) burns nearly all of a 16-bit Z buffer (the 448p
+// layout) inside the first unit, z-fighting everything distant (city walls,
+// buildings-within-buildings, wall/floor saw). HyperSolar's software clipper
+// (playstation2.c SH_NEAR_Z) already clips ALL geometry at eye Z 1.0, so a
+// 1.0 near plane is visually free and buys ~20x far-field Z precision; 2048
+// comfortably covers the largest scene (city draw distance 512, sky radius
+// 1024) and doubles it again. Benefits 24-bit Z (448i) too.
+#define RL_CULL_DISTANCE_NEAR                  1.0    // Default projection matrix near cull distance
+#define RL_CULL_DISTANCE_FAR                2048.0    // Default projection matrix far cull distance
 
 // Default shader vertex attribute locations
 //#define RL_DEFAULT_SHADER_ATTRIB_LOCATION_POSITION    0
