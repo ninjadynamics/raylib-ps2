@@ -4333,7 +4333,9 @@ void InitTimer(void)
     enable_interrupts();
 #endif
 #if defined(PLATFORM_PLAYSTATION2)
-    CORE.Time.base=clock();
+    // 64-bit bus-clock base — see GetTime() in rcore_playstation2.c (32-bit clock()
+    // wrapped ~71 min in; extern declared there, visible here via the platform #include)
+    CORE.Time.base=GetTimerSystemTime();
 #endif
 #if defined(PLATFORM_VITA)
     CORE.Time.base=sceKernelGetProcessTimeWide();

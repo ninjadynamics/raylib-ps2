@@ -455,11 +455,23 @@ void SwapScreenBuffer(void)
 // Module Functions Definition: Misc
 //----------------------------------------------------------------------------------
 
+// HyperSolar: 64-bit monotonic time source. The stock path bottomed out in newlib's
+// 32-bit clock() (libcglue _times: busclock_sec*1000 + busclock_usec — inconsistent
+// units AND a 32-bit wrap ~71 min in), which wrapped on long sessions: raw frame
+// deltas went degenerate (GetFPS() read >1500 while vsync-locked) and only the game's
+// dt clamp kept motion sane. GetTimerSystemTime() is the SAME ps2sdk bus-clock timer
+// subsystem clock() sits on (started by crt0's _ps2sdk_init_timer), read at full u64
+// width in kBUSCLK (147.456 MHz) ticks — wraps in ~4000 years. Declared locally:
+// including <timer.h> would pull ps2sdk's `s32 InitTimer(s32)` prototype into this
+// TU (the platform file is #included into rcore.c), colliding with rcore's static
+// `void InitTimer(void)`.
+extern unsigned long long GetTimerSystemTime(void);
+#define PS2_BUSCLK_HZ 147456000.0
+
 // Get elapsed time measure in seconds since InitTimer()
 double GetTime(void)
 {
-    double time=(double)(clock() - CORE.Time.base)*1e-6;
-    return time;
+    return (double)(GetTimerSystemTime() - CORE.Time.base)/PS2_BUSCLK_HZ;
 }
 
 // Open URL with default system browser (if available)
