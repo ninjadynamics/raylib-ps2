@@ -920,7 +920,13 @@ ifeq ($(PLATFORM),PLATFORM_PLAYSTATION2)
               -DNO_VU0_VECTORS -DNO_ASM \
               -DSUPPORT_GESTURES_SYSTEM=0 \
               -fpermissive -Umips
-    INCLUDE_PATHS = -I. -I$(PS2SDK)/ports/include -I$(PS2SDK)/common/include -I$(PS2SDK)/ee/include $(EXTRA_INCLUDE_PATHS)
+    # HyperSolar: build against the PROJECT'S ps2gl/ps2stuff FORK headers (ahead of
+    # the SDK-installed copies in ports/include), matching what the game links. Without
+    # this, raylib-ps2 compiled against the stale installed headers while linking the
+    # fork .a — an inconsistency that broke the moment a fork-only symbol was added
+    # (pglTexImageTakeOwnership). Fork headers first so they win the lookup.
+    INCLUDE_PATHS = -I. -I../../ps2gl/include -I../../ps2stuff/include \
+                    -I$(PS2SDK)/ports/include -I$(PS2SDK)/common/include -I$(PS2SDK)/ee/include $(EXTRA_INCLUDE_PATHS)
 endif
 
 ifeq ($(PLATFORM),PLATFORM_PSP_SDL)

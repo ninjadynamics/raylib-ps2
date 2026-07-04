@@ -67,6 +67,7 @@
 #include <ps2gl/displaycontext.h>
 #include <ps2gl/drawcontext.h>
 #include <ps2gl/glcontext.h>
+#include <GL/ps2gl.h>   /* pglTexImageTakeOwnership (texture image-buffer ownership) */
 
 
 static char padBuf[256] __attribute__((aligned(64)));
@@ -465,7 +466,16 @@ void SwapScreenBuffer(void)
 // including <timer.h> would pull ps2sdk's `s32 InitTimer(s32)` prototype into this
 // TU (the platform file is #included into rcore.c), colliding with rcore's static
 // `void InitTimer(void)`.
+// C linkage EXPLICITLY: this TU compiles as C++ (it's #included into rcore.c, built
+// with g++), and GetTimerSystemTime is a ps2sdk C symbol. Without extern "C" the
+// reference mangles (_Z18GetTimerSystemTimev) and fails to link against the unmangled
+// definition. This used to link only because a ps2sdk header transitively supplied the
+// extern "C" decl — fragile; pin it here so include order can't break it.
+#ifdef __cplusplus
+extern "C" unsigned long long GetTimerSystemTime(void);
+#else
 extern unsigned long long GetTimerSystemTime(void);
+#endif
 #define PS2_BUSCLK_HZ 147456000.0
 
 // Get elapsed time measure in seconds since InitTimer()
@@ -1036,6 +1046,11 @@ void rlLoadTexturePS2(unsigned int id, const void *data, int width, int height, 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texels);
+    // Hand 'texels' to ps2gl: it stores this pointer (re-DMAs from it on GS LRU
+    // re-upload) but does NOT own it by default, so without this it leaks the whole
+    // buffer on every texture load — a ~megabyte-per-reload leak the conservation
+    // instrument caught. ps2gl now free()s it on glDeleteTextures (memalign-compat).
+    pglTexImageTakeOwnership();
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 // ps2gl immediate-geometry buffer size (qwords) for the fallback pglInit in
@@ -1087,7 +1102,7 @@ int InitPlatform(void)
         return -1;
     }
 
-    TRACELOG(LOG_INFO, "[ CANARY ] Initializing MODIFIED LOCAL raylib %s [2026.07.02 13:12]", RAYLIB_VERSION);
+    TRACELOG(LOG_INFO, "[ CANARY ] Initializing MODIFIED LOCAL raylib %s [2026.07.04 21:15]", RAYLIB_VERSION);
     TRACELOG(LOG_INFO, "Platform backend: PLAYSTATION2");
     TRACELOG(LOG_INFO, "PLATFORM: PlayStation 2 init");
     bool pal = false;
