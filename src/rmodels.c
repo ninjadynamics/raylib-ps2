@@ -5600,11 +5600,35 @@ static Model LoadGLTF(const char *fileName)
                 // Load base color texture (albedo)
                 if (data->materials[i].pbr_metallic_roughness.base_color_texture.texture)
                 {
-                    Image imAlbedo = LoadImageFromCgltfImage(data->materials[i].pbr_metallic_roughness.base_color_texture.texture->image, texPath);
-                    if (imAlbedo.data != NULL)
+                    cgltf_texture *albedoTexture = data->materials[i].pbr_metallic_roughness.base_color_texture.texture;
+                    Texture2D sharedAlbedo = { 0 };
+
+                    // glTF permits several materials/texture records to point at
+                    // one image. Re-uploading that image per material wastes VRAM
+                    // (HyperSolar's logo did this twice). Raylib does not apply
+                    // glTF sampler objects here, so decoded-image identity is the
+                    // complete runtime texture identity for this loader.
+                    for (unsigned int previous = 0; previous < i; previous++)
                     {
-                        model.materials[j].maps[MATERIAL_MAP_ALBEDO].texture = LoadTextureFromImage(imAlbedo);
-                        UnloadImage(imAlbedo);
+                        cgltf_texture *previousTexture = data->materials[previous].pbr_metallic_roughness.base_color_texture.texture;
+                        if ((previousTexture != NULL) &&
+                            (previousTexture->image == albedoTexture->image))
+                        {
+                            Texture2D candidate = model.materials[previous + 1].maps[MATERIAL_MAP_ALBEDO].texture;
+                            if ((candidate.id != 0) && (candidate.id != rlGetTextureIdDefault())) sharedAlbedo = candidate;
+                            break;
+                        }
+                    }
+
+                    if (sharedAlbedo.id != 0) model.materials[j].maps[MATERIAL_MAP_ALBEDO].texture = sharedAlbedo;
+                    else
+                    {
+                        Image imAlbedo = LoadImageFromCgltfImage(albedoTexture->image, texPath);
+                        if (imAlbedo.data != NULL)
+                        {
+                            model.materials[j].maps[MATERIAL_MAP_ALBEDO].texture = LoadTextureFromImage(imAlbedo);
+                            UnloadImage(imAlbedo);
+                        }
                     }
                 }
                 // Load base color factor (tint)
