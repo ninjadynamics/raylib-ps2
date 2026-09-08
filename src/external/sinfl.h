@@ -426,7 +426,7 @@ sinfl_decompress(unsigned char *out, int cap, const unsigned char *in, int size)
 
       if ((unsigned short)len != (unsigned short)~nlen)
         return (int)(out-o);
-      if (len > (e - s.bitptr) || !len)
+      if ((int)len > (e - s.bitptr) || !len)
         return (int)(out-o);
 
       memcpy(out, s.bitptr, (size_t)len);

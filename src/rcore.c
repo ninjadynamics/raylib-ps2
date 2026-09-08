@@ -1755,10 +1755,12 @@ void WaitTime(double seconds)
 #if SUPPORT_BUSY_WAIT_LOOP
     while (GetTime() < destinationTime) { }
 #else
+    #if defined(_WIN32) || defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__EMSCRIPTEN__) || defined(__APPLE__)
     #if SUPPORT_PARTIALBUSY_WAIT_LOOP
         double sleepSeconds = seconds - seconds*0.05;  // NOTE: Reserve a percentage of the time for busy waiting
     #else
         double sleepSeconds = seconds;
+    #endif
     #endif
 
     // System halt functions
@@ -2693,7 +2695,7 @@ const char *GetWorkingDirectory(void)
 #if !defined(PLATFORM_PLAYSTATION2) && !defined(PLATFORM_VITA) && !defined(PLATFORM_ORBIS) && !defined(PLATFORM_PROSPERO) && !defined(PLATFORM_NINTENDO64)
     char *path = GETCWD(currentDir, MAX_FILEPATH_LENGTH - 1);
 #else
-    char *path = ".";
+    const char *path = ".";
 #endif
     return path;
 }
@@ -3027,12 +3029,12 @@ unsigned int GetDirectoryFileCountEx(const char *basePath, const char *filter, b
 {
     unsigned int fileCounter = 0;
 
+#if !defined(PLATFORM_PLAYSTATION2) && !defined(PLATFORM_VITA) && !defined(PLATFORM_ORBIS) && !defined(PLATFORM_PROSPERO) && !defined(PLATFORM_NINTENDO64)
     // WARNING: Path can not be static or it will be reused between recursive function calls!
     char path[MAX_FILEPATH_LENGTH] = { 0 };
     memset(path, 0, MAX_FILEPATH_LENGTH);
 
     struct dirent *entity;
-#if !defined(PLATFORM_PLAYSTATION2) && !defined(PLATFORM_VITA) && !defined(PLATFORM_ORBIS) && !defined(PLATFORM_PROSPERO) && !defined(PLATFORM_NINTENDO64)
     DIR *dir = opendir(basePath);
 
     if (dir != NULL) // It's a directory
@@ -3564,7 +3566,7 @@ unsigned int *ComputeSHA256(unsigned char *data, int dataSize)
 
     memcpy(buffer, data, dataSize);
     buffer[dataSize] = 0x80;
-    for (int i = 1; i <= sizeof(bitLen); i++)
+    for (size_t i = 1; i <= sizeof(bitLen); i++)
     {
         buffer[(paddedSize - sizeof(bitLen)) + (i - 1)] = (bitLen >> (8*(sizeof(bitLen) - i))) & 0xFF;
     }
@@ -4371,12 +4373,12 @@ void SetupViewport(int width, int height)
 // contain enough space to store all required paths
 static void ScanDirectoryFiles(const char *basePath, FilePathList *files, const char *filter, unsigned int expectedFileCount, bool scanSubdirs)
 {
+#if !defined(PLATFORM_PLAYSTATION2) && !defined(PLATFORM_VITA) && !defined(PLATFORM_ORBIS) && !defined(PLATFORM_PROSPERO) && !defined(PLATFORM_NINTENDO64)
     // WARNING: Path can not be static or it will be reused between recursive function calls!
     char path[MAX_FILEPATH_LENGTH] = { 0 };
     memset(path, 0, MAX_FILEPATH_LENGTH);
 
     struct dirent *dp = NULL;
-#if !defined(PLATFORM_PLAYSTATION2) && !defined(PLATFORM_VITA) && !defined(PLATFORM_ORBIS) && !defined(PLATFORM_PROSPERO) && !defined(PLATFORM_NINTENDO64)
 
     DIR *dir = opendir(basePath);
 

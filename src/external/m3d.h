@@ -2409,7 +2409,8 @@ static M3D_FLOAT _m3d_rsq(M3D_FLOAT x)
 m3d_t *m3d_load(unsigned char *data, m3dread_t readfilecb, m3dfree_t freecb, m3d_t *mtllib)
 {
     unsigned char *end, *chunk, *buff, weights[8];
-    unsigned int i, j, k, l, n, am, len = 0, reclen, offs;
+    unsigned int i, j, k, l, n, am, len = 0, reclen;
+    M3D_INDEX offs;
 #ifndef M3D_NOVOXELS
     int32_t min_x, min_y, min_z, max_x, max_y, max_z, sx, sy, sz, x, y, z;
     M3D_INDEX edge[8], enorm;

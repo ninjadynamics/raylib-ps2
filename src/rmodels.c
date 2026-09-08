@@ -4194,8 +4194,6 @@ bool CheckCollisionBoxSphere(BoundingBox box, Vector3 center, float radius)
 {
     bool collision = false;
 
-    float dmin = 0;
-
     Vector3 closestPoint = {
         Clamp(center.x, box.min.x, box.max.x),
         Clamp(center.y, box.min.y, box.max.y),
@@ -4482,8 +4480,8 @@ static Model LoadOBJ(const char *fileName)
 
     char currentDir[MAX_FILEPATH_LENGTH] = { 0 };
     strncpy(currentDir, GetWorkingDirectory(), MAX_FILEPATH_LENGTH - 1); // Save current working directory
-    const char *workingDir = GetDirectoryPath(fileName); // Switch to OBJ directory for material path correctness
 #if !defined(PLATFORM_PLAYSTATION2) && !defined(PLATFORM_VITA) && !defined(PLATFORM_ORBIS) && !defined(PLATFORM_PROSPERO) && !defined(PLATFORM_NINTENDO64)
+    const char *workingDir = GetDirectoryPath(fileName); // Switch to OBJ directory for material path correctness
     if (CHDIR(workingDir) != 0) TRACELOG(LOG_WARNING, "MODEL: [%s] Failed to change working directory", workingDir);
 #endif
     unsigned int dataSize = (unsigned int)strlen(fileText);
@@ -4665,13 +4663,13 @@ static Model LoadOBJ(const char *fileName)
 
             for (int i = 0; i < 3; i++) model.meshes[meshIndex].vertices[localMeshVertexCount*3 + i] = objAttributes.vertices[vertIndex*3 + i];
 
-            if ((objAttributes.texcoords != NULL) && (texcordIndex != TINYOBJ_INVALID_INDEX) && (texcordIndex >= 0) && (model.meshes[meshIndex].texcoords))
+            if ((objAttributes.texcoords != NULL) && ((unsigned int)texcordIndex != TINYOBJ_INVALID_INDEX) && (texcordIndex >= 0) && (model.meshes[meshIndex].texcoords))
             {
                 for (int i = 0; i < 2; i++) model.meshes[meshIndex].texcoords[localMeshVertexCount*2 + i] = objAttributes.texcoords[texcordIndex*2 + i];
                 model.meshes[meshIndex].texcoords[localMeshVertexCount*2 + 1] = 1.0f - model.meshes[meshIndex].texcoords[localMeshVertexCount*2 + 1];
             }
 
-            if ((objAttributes.normals != NULL) && (normalIndex != TINYOBJ_INVALID_INDEX) && (normalIndex >= 0))
+            if ((objAttributes.normals != NULL) && ((unsigned int)normalIndex != TINYOBJ_INVALID_INDEX) && (normalIndex >= 0))
             {
                 for (int i = 0; i < 3; i++) model.meshes[meshIndex].normals[localMeshVertexCount*3 + i] = objAttributes.normals[normalIndex*3 + i];
             }
@@ -5382,7 +5380,7 @@ static Image LoadImageFromCgltfImage(cgltf_image *cgltfImage, const char *texPat
                 int outSize = numberOfEncodedBits/8 ;                           // Actual encoded bytes
                 void *data = NULL;
 
-                cgltf_options options = { 0 };
+                cgltf_options options = { cgltf_file_type_invalid };
                 options.file.read = LoadFileGLTFCallback;
                 options.file.release = ReleaseFileGLTFCallback;
                 cgltf_result result = cgltf_load_buffer_base64(&options, outSize, cgltfImage->uri + i + 1, &data);
@@ -5518,7 +5516,7 @@ static Model LoadGLTF(const char *fileName)
     if (fileData == NULL) return model;
 
     // glTF data loading
-    cgltf_options options = { 0 };
+    cgltf_options options = { cgltf_file_type_invalid };
     options.file.read = LoadFileGLTFCallback;
     options.file.release = ReleaseFileGLTFCallback;
     cgltf_data *data = NULL;
@@ -6584,7 +6582,7 @@ static ModelAnimation *LoadModelAnimationsGLTF(const char *fileName, int *animCo
     ModelAnimation *animations = NULL;
 
     // glTF data loading
-    cgltf_options options = { 0 };
+    cgltf_options options = { cgltf_file_type_invalid };
     options.file.read = LoadFileGLTFCallback;
     options.file.release = ReleaseFileGLTFCallback;
     cgltf_data *data = NULL;
@@ -6886,7 +6884,8 @@ static Model LoadM3D(const char *fileName)
 
     m3d_t *m3d = NULL;
     m3dp_t *prop = NULL;
-    int i, j, k, l, n, mi = -2, vcolor = 0;
+    int i, j, k, l, n, vcolor = 0;
+    M3D_INDEX mi = (M3D_INDEX)-2;
 
     int dataSize = 0;
     unsigned char *fileData = LoadFileData(fileName, &dataSize);
@@ -7072,10 +7071,10 @@ static Model LoadM3D(const char *fileName)
             {
                 for (n = 0; n < 3; n++)
                 {
-                    int skinid = m3d->vertex[m3d->face[i].vertex[n]].skinid;
+                    M3D_INDEX skinid = m3d->vertex[m3d->face[i].vertex[n]].skinid;
 
                     // Check if there is a skin for this mesh
-                    if ((skinid != M3D_UNDEF) && (skinid < (int)m3d->numskin))
+                    if ((skinid != M3D_UNDEF) && (skinid < m3d->numskin))
                     {
                         for (j = 0; j < 4; j++)
                         {

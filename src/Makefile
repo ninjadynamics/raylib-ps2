@@ -544,9 +544,10 @@ ifneq ($(RAYLIB_CONFIG_FLAGS), NONE)
     CFLAGS += -DEXTERNAL_CONFIG_FLAGS $(RAYLIB_CONFIG_FLAGS)
 endif
 
+# PS2 uses g++ for the ps2gl/ps2stuff headers; retain its default C++ dialect.
 ifeq ($(TARGET_PLATFORM),$(filter $(TARGET_PLATFORM),PLATFORM_WEB PLATFORM_WEB_RGFW))
     CFLAGS += -std=gnu99
-else
+else ifneq ($(TARGET_PLATFORM),PLATFORM_PLAYSTATION2)
     CFLAGS += -std=c99
 endif
 

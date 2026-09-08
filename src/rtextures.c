@@ -718,6 +718,7 @@ unsigned char *ExportImageToMemory(Image image, const char *fileType, int *dataS
 
     if ((image.width == 0) || (image.height == 0) || (image.data == NULL)) return fileData; // Security check
 
+#if SUPPORT_IMAGE_EXPORT
     int channels = 4;
 
     if (image.format == PIXELFORMAT_UNCOMPRESSED_GRAYSCALE) channels = 1;
@@ -725,7 +726,6 @@ unsigned char *ExportImageToMemory(Image image, const char *fileType, int *dataS
     else if (image.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8) channels = 3;
     else if (image.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8) channels = 4;
 
-#if SUPPORT_IMAGE_EXPORT
     if ((strcmp(fileType, ".png") == 0) || (strcmp(fileType, ".PNG") == 0))
     {
         fileData = stbi_write_png_to_mem((const unsigned char *)image.data, image.width*channels, image.width, image.height, channels, dataSize);

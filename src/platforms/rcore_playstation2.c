@@ -104,28 +104,10 @@ static const struct
     { PAD_R3 ,GAMEPAD_BUTTON_RIGHT_THUMB },
 };
 
-#define PS2GL_MAX_TEXTURE_LIMIT 10 //You can change this limit
-typedef struct{
-    GLuint id;
-    int    width, height;
-} ps2gl_surface_t;
-//----------------------------------------------------------------------------------
-// Types and Structures Definition
-//----------------------------------------------------------------------------------
-
-typedef struct {
-    // TODO: Define the platform specific variables required
-    int version;
-    ps2gl_surface_t surfaces[PS2GL_MAX_TEXTURE_LIMIT];
-    unsigned int surface_index;
-} PlatformData;
-
 //----------------------------------------------------------------------------------
 // Global Variables Definition
 //----------------------------------------------------------------------------------
 extern CoreData CORE;                   // Global CORE state context
-
-static PlatformData platform = { 0 };   // Platform specific data
 
 bool firstTime = true;
 
@@ -576,7 +558,7 @@ void PollInputEvents(void)
         new_pad = paddata & ~old_pad;
         old_pad = paddata;
         //MapControls(port, buttons);
-        for (int j = 0; j < sizeof(buttonMap) / sizeof(buttonMap[0]); j++)
+        for (size_t j = 0; j < sizeof(buttonMap) / sizeof(buttonMap[0]); j++)
         {
             if (paddata & buttonMap[j].ps2Button)
             {
@@ -1102,7 +1084,7 @@ int InitPlatform(void)
         return -1;
     }
 
-    TRACELOG(LOG_INFO, "[ CANARY ] Initializing MODIFIED LOCAL raylib %s [2026.07.04 21:15]", RAYLIB_VERSION);
+    TRACELOG(LOG_INFO, "[ CANARY ] Initializing MODIFIED LOCAL raylib %s [2026.09.08 11:14]", RAYLIB_VERSION);
     TRACELOG(LOG_INFO, "Platform backend: PLAYSTATION2");
     TRACELOG(LOG_INFO, "PLATFORM: PlayStation 2 init");
     bool pal = false;
