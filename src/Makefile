@@ -576,6 +576,11 @@ ifeq ($(RAYLIB_BUILD_MODE),RELEASE)
     ifeq ($(TARGET_PLATFORM),PLATFORM_ANDROID)
         CFLAGS += -O2
     endif
+    ifeq ($(TARGET_PLATFORM),PLATFORM_PLAYSTATION2)
+        # Object recipes use CFLAGS, not the SDK's optimized EE_CXXFLAGS.
+        # CUSTOM_CFLAGS is appended below and can still override this default.
+        CFLAGS += -O2
+    endif
 endif
 
 # Additional flags for compiler (if desired)

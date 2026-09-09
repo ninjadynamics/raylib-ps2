@@ -2458,7 +2458,8 @@ bool IsFileExtension(const char *fileName, const char *ext)
         int extLength = (int)strlen(ext);
         char *extList = (char *)RL_CALLOC(extLength + 1, 1);
         char *extListPtrs[MAX_FILE_EXTENSIONS] = { 0 };
-        strncpy(extList, ext, extLength);
+        if (extList == NULL) return false;
+        memcpy(extList, ext, (size_t)extLength + 1); // Include the string terminator
         extListPtrs[0] = extList;
 
         for (int i = 0; i < extLength; i++)
