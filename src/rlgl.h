@@ -632,6 +632,15 @@ RLAPI void rlVertex2i(int x, int y);                    // Define one vertex (po
 RLAPI void rlVertex2f(float x, float y);                // Define one vertex (position) - 2 float
 RLAPI void rlVertex3f(float x, float y, float z);       // Define one vertex (position) - 3 float
 RLAPI void rlTexCoord2f(float x, float y);              // Define one vertex (texture coordinate) - 2 float
+#if defined(PS2) || defined(PLATFORM_PLAYSTATION2)
+// Append BL/TL/TR/BR to the current GL_QUADS batch; preserves current color,
+// normal, texture and draw state. Unsupported contexts use the original calls.
+RLAPI void rlPs2TexturedQuad2D(float x0, float y0, float x1, float y1,
+    float u0, float v0, float u1, float v1);
+RLAPI int rlPs2TryDrawTexturedQuads2D(const float *quads, int count);
+// Four caller-ordered {x,y,u,v} corners per quad; uniform color outside Begin.
+RLAPI int rlPs2TryDrawTexturedQuadCorners2D(const float *quads, int count);
+#endif
 RLAPI void rlNormal3f(float x, float y, float z);       // Define one vertex (normal) - 3 float
 RLAPI void rlColor4ub(unsigned char r, unsigned char g, unsigned char b, unsigned char a); // Define one vertex (color) - 4 byte
 RLAPI void rlColor3f(float x, float y, float z);        // Define one vertex (color) - 3 float
@@ -1484,6 +1493,26 @@ void rlVertex2i(int x, int y) { glVertex2i(x, y); }
 void rlVertex2f(float x, float y) { glVertex2f(x, y); }
 void rlVertex3f(float x, float y, float z) { glVertex3f(x, y, z); }
 void rlTexCoord2f(float x, float y) { glTexCoord2f(x, y); }
+#if defined(PLATFORM_PLAYSTATION2)
+#include <GL/ps2gl.h>
+int rlPs2TryDrawTexturedQuads2D(const float *quads, int count)
+{
+    return pglTryDrawTexturedQuads2D(quads, count) != GL_FALSE;
+}
+int rlPs2TryDrawTexturedQuadCorners2D(const float *quads, int count)
+{
+    return pglTryDrawTexturedQuadCorners2D(quads, count) != GL_FALSE;
+}
+void rlPs2TexturedQuad2D(float x0, float y0, float x1, float y1,
+    float u0, float v0, float u1, float v1)
+{
+    if (pglTryTexturedQuad2D(x0, y0, x1, y1, u0, v0, u1, v1)) return;
+    glTexCoord2f(u0, v1); glVertex2f(x0, y1);
+    glTexCoord2f(u0, v0); glVertex2f(x0, y0);
+    glTexCoord2f(u1, v0); glVertex2f(x1, y0);
+    glTexCoord2f(u1, v1); glVertex2f(x1, y1);
+}
+#endif
 void rlNormal3f(float x, float y, float z) { glNormal3f(x, y, z); }
 void rlColor4ub(unsigned char r, unsigned char g, unsigned char b, unsigned char a) { glColor4ub(r, g, b, a); }
 void rlColor3f(float x, float y, float z) { glColor3f(x, y, z); }

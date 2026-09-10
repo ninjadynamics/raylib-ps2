@@ -59,6 +59,37 @@
 #ifndef RAYMATH_H
 #define RAYMATH_H
 
+// PS2 experiments: VU0 takes precedence over ordered EE arithmetic, with each
+// operation independently gated. VU0 preserves expression order but can differ
+// in low bits: this is an explicitly authorized visual/performance experiment.
+// Rebuild raylib and the game together after changing these header defaults.
+#if defined(_EE)
+    #ifndef PS2_RAYMATH_MATRIX_VU0
+        #define PS2_RAYMATH_MATRIX_VU0 1
+    #endif
+    #ifndef PS2_RAYMATH_VECTOR_VU0
+        #define PS2_RAYMATH_VECTOR_VU0 1
+    #endif
+    #ifndef PS2_RAYMATH_MATRIX_KERNEL
+        #define PS2_RAYMATH_MATRIX_KERNEL 1
+    #endif
+    #ifndef PS2_RAYMATH_VECTOR_KERNEL
+        #define PS2_RAYMATH_VECTOR_KERNEL 1
+    #endif
+    #if (PS2_RAYMATH_MATRIX_VU0 != 0 && PS2_RAYMATH_MATRIX_VU0 != 1) || \
+        (PS2_RAYMATH_VECTOR_VU0 != 0 && PS2_RAYMATH_VECTOR_VU0 != 1) || \
+        (PS2_RAYMATH_MATRIX_KERNEL != 0 && PS2_RAYMATH_MATRIX_KERNEL != 1) || \
+        (PS2_RAYMATH_VECTOR_KERNEL != 0 && PS2_RAYMATH_VECTOR_KERNEL != 1)
+        #error "PS2 raymath kernel switches must be 0 or 1"
+    #endif
+    #if PS2_RAYMATH_MATRIX_KERNEL || PS2_RAYMATH_VECTOR_KERNEL
+        #include <ps2s/ordered_math.h>
+    #endif
+    #if PS2_RAYMATH_MATRIX_VU0 || PS2_RAYMATH_VECTOR_VU0
+        #include <ps2s/vu0_math.h>
+    #endif
+#endif
+
 #if defined(RAYMATH_IMPLEMENTATION) && defined(RAYMATH_STATIC_INLINE)
     #error "Specifying both RAYMATH_IMPLEMENTATION and RAYMATH_STATIC_INLINE is contradictory"
 #endif
@@ -896,9 +927,31 @@ RMAPI Vector3 Vector3Transform(Vector3 v, Matrix mat)
     float y = v.y;
     float z = v.z;
 
+#if defined(_EE) && PS2_RAYMATH_VECTOR_VU0
+    // Stage directly as columns so VU0 computes XYZ together. This is the
+    // alignment copy itself, not a subsequent transpose pass. Translation
+    // remains the final addition, never a new multiplication by input.w.
+    ps2s_vu0_mat4 columns = {
+        mat.m0, mat.m1, mat.m2, 0.0f,
+        mat.m4, mat.m5, mat.m6, 0.0f,
+        mat.m8, mat.m9, mat.m10, 0.0f,
+        mat.m12, mat.m13, mat.m14, 0.0f
+    };
+    ps2s_vu0_vec4 input = { x, y, z, 0.0f };
+    ps2s_vu0_vec4 output;
+    PS2S_VU0_MAT4_VEC3_ALIGNED(output, columns, input);
+    result.x = output[0];
+    result.y = output[1];
+    result.z = output[2];
+#elif defined(_EE) && PS2_RAYMATH_VECTOR_KERNEL
+    PS2S_ORDERED_DOT3_ADD_COP1(result.x, mat.m0, x, mat.m4, y, mat.m8, z, mat.m12);
+    PS2S_ORDERED_DOT3_ADD_COP1(result.y, mat.m1, x, mat.m5, y, mat.m9, z, mat.m13);
+    PS2S_ORDERED_DOT3_ADD_COP1(result.z, mat.m2, x, mat.m6, y, mat.m10, z, mat.m14);
+#else
     result.x = mat.m0*x + mat.m4*y + mat.m8*z + mat.m12;
     result.y = mat.m1*x + mat.m5*y + mat.m9*z + mat.m13;
     result.z = mat.m2*x + mat.m6*y + mat.m10*z + mat.m14;
+#endif
 
     return result;
 }
@@ -1684,7 +1737,58 @@ RMAPI Matrix MatrixMultiply(Matrix left, Matrix right)
 {
     Matrix result = { 0 };
 
-#if defined(RAYMATH_SSE_ENABLED)
+#if defined(_EE) && PS2_RAYMATH_MATRIX_VU0
+    // Raymath's reversed semantic multiplication and transposed storage cancel:
+    // its native arrays use the same LHS*RHS column kernel as cpu_mat_44.
+    // Explicit fields preserve aliasing and avoid assuming public 16-byte
+    // alignment. No per-element CPU transpose is needed.
+    ps2s_vu0_mat4 lhs = {
+        left.m0, left.m4, left.m8, left.m12,
+        left.m1, left.m5, left.m9, left.m13,
+        left.m2, left.m6, left.m10, left.m14,
+        left.m3, left.m7, left.m11, left.m15
+    };
+    ps2s_vu0_mat4 rhs = {
+        right.m0, right.m4, right.m8, right.m12,
+        right.m1, right.m5, right.m9, right.m13,
+        right.m2, right.m6, right.m10, right.m14,
+        right.m3, right.m7, right.m11, right.m15
+    };
+    ps2s_vu0_mat4 output;
+    PS2S_VU0_MAT4_MUL_ALIGNED(output, lhs, rhs);
+    result.m0 = output[0]; result.m4 = output[1]; result.m8 = output[2]; result.m12 = output[3];
+    result.m1 = output[4]; result.m5 = output[5]; result.m9 = output[6]; result.m13 = output[7];
+    result.m2 = output[8]; result.m6 = output[9]; result.m10 = output[10]; result.m14 = output[11];
+    result.m3 = output[12]; result.m7 = output[13]; result.m11 = output[14]; result.m15 = output[15];
+#elif defined(_EE) && PS2_RAYMATH_MATRIX_KERNEL
+    // Pair independent output lanes, preserving left*right operand order.
+    // Raymath's storage order differs from cpu_mat_44: name every component
+    // explicitly instead of reinterpreting either public type or transposing.
+    PS2S_ORDERED_DOT4_PAIR_COP1(result.m0, result.m4,
+        left.m0, left.m1, left.m2, left.m3, left.m4, left.m5, left.m6, left.m7,
+        right.m0, right.m4, right.m8, right.m12);
+    PS2S_ORDERED_DOT4_PAIR_COP1(result.m8, result.m12,
+        left.m8, left.m9, left.m10, left.m11, left.m12, left.m13, left.m14, left.m15,
+        right.m0, right.m4, right.m8, right.m12);
+    PS2S_ORDERED_DOT4_PAIR_COP1(result.m1, result.m5,
+        left.m0, left.m1, left.m2, left.m3, left.m4, left.m5, left.m6, left.m7,
+        right.m1, right.m5, right.m9, right.m13);
+    PS2S_ORDERED_DOT4_PAIR_COP1(result.m9, result.m13,
+        left.m8, left.m9, left.m10, left.m11, left.m12, left.m13, left.m14, left.m15,
+        right.m1, right.m5, right.m9, right.m13);
+    PS2S_ORDERED_DOT4_PAIR_COP1(result.m2, result.m6,
+        left.m0, left.m1, left.m2, left.m3, left.m4, left.m5, left.m6, left.m7,
+        right.m2, right.m6, right.m10, right.m14);
+    PS2S_ORDERED_DOT4_PAIR_COP1(result.m10, result.m14,
+        left.m8, left.m9, left.m10, left.m11, left.m12, left.m13, left.m14, left.m15,
+        right.m2, right.m6, right.m10, right.m14);
+    PS2S_ORDERED_DOT4_PAIR_COP1(result.m3, result.m7,
+        left.m0, left.m1, left.m2, left.m3, left.m4, left.m5, left.m6, left.m7,
+        right.m3, right.m7, right.m11, right.m15);
+    PS2S_ORDERED_DOT4_PAIR_COP1(result.m11, result.m15,
+        left.m8, left.m9, left.m10, left.m11, left.m12, left.m13, left.m14, left.m15,
+        right.m3, right.m7, right.m11, right.m15);
+#elif defined(RAYMATH_SSE_ENABLED)
     // Load left side and right side
     __m128 c0 = _mm_set_ps(right.m12, right.m8,  right.m4,  right.m0);
     __m128 c1 = _mm_set_ps(right.m13, right.m9,  right.m5,  right.m1);
