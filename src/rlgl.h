@@ -640,6 +640,8 @@ RLAPI void rlPs2TexturedQuad2D(float x0, float y0, float x1, float y1,
 RLAPI int rlPs2TryDrawTexturedQuads2D(const float *quads, int count);
 // Four caller-ordered {x,y,u,v} corners per quad; uniform color outside Begin.
 RLAPI int rlPs2TryDrawTexturedQuadCorners2D(const float *quads, int count);
+// Three current-attribute XYZ vertices inside the current triangle batch.
+RLAPI int rlPs2TryTriangle3D(const float *xyz);
 #endif
 RLAPI void rlNormal3f(float x, float y, float z);       // Define one vertex (normal) - 3 float
 RLAPI void rlColor4ub(unsigned char r, unsigned char g, unsigned char b, unsigned char a); // Define one vertex (color) - 4 byte
@@ -1502,6 +1504,10 @@ int rlPs2TryDrawTexturedQuads2D(const float *quads, int count)
 int rlPs2TryDrawTexturedQuadCorners2D(const float *quads, int count)
 {
     return pglTryDrawTexturedQuadCorners2D(quads, count) != GL_FALSE;
+}
+int rlPs2TryTriangle3D(const float *xyz)
+{
+    return pglTryTriangle3D(xyz) != GL_FALSE;
 }
 void rlPs2TexturedQuad2D(float x0, float y0, float x1, float y1,
     float u0, float v0, float u1, float v1)
