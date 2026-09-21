@@ -51,6 +51,9 @@ packages/
 *.o
 *.exe
 *.a
+*.d
+*.pyc
+__pycache__/
 *.bc
 *.so
 *.so.*
@@ -75,6 +78,9 @@ examples/**/*.data
 examples/**/*.js
 examples/**/*.html
 examples/**/logs/*
+# Authored extensionless build instructions and resource licenses.
+!examples/**/Makefile
+!examples/**/LICENSE
 
 # Ignore files build by xcode
 *.mode*v*
