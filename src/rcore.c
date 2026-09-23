@@ -416,6 +416,18 @@ RLAPI const char *raylib_version = RAYLIB_VERSION;  // raylib version exported s
 
 CoreData CORE = { 0 };                              // Global CORE state context
 
+#if defined(PLATFORM_PLAYSTATION2) && !SUPPORT_CUSTOM_FRAME_CONTROL
+// Count completed producer frames, not selected GetFPS() observations. A
+// time-gated sampler can omit short frames and misreport asynchronous pacing.
+// This meter is separate from simulation timing and GS presentation counters.
+static struct {
+    double elapsed;
+    float history[32]; // At least half a second at the supported 50/60 Hz rates.
+    unsigned int frames;
+    unsigned int index;
+} ps2Fps = { 0 };
+#endif
+
 static int logTypeLevel = LOG_INFO;                 // Minimum log type level
 
 static TraceLogCallback traceLog = NULL;            // TraceLog callback function pointer
@@ -792,6 +804,9 @@ void InitWindow(int width, int height, const char *title)
 #endif
 
     CORE.Time.frameCounter = 0;
+#if defined(PLATFORM_PLAYSTATION2) && !SUPPORT_CUSTOM_FRAME_CONTROL
+    memset(&ps2Fps, 0, sizeof(ps2Fps));
+#endif
     CORE.Window.shouldClose = false;
 
     // Initialize random seed
@@ -988,6 +1003,23 @@ void EndDrawing(void)
     CORE.Time.previous = CORE.Time.current;
 
     CORE.Time.frame = CORE.Time.update + CORE.Time.draw;
+
+#if defined(PLATFORM_PLAYSTATION2)
+    if (ps2Fps.frames == 32) ps2Fps.elapsed -= ps2Fps.history[ps2Fps.index];
+    else ++ps2Fps.frames;
+    ps2Fps.history[ps2Fps.index] = (float)CORE.Time.frame;
+    ps2Fps.elapsed += ps2Fps.history[ps2Fps.index];
+    ps2Fps.index = (ps2Fps.index + 1)&31u;
+    while (ps2Fps.frames > 1)
+    {
+        unsigned int oldest = (ps2Fps.index + 32 - ps2Fps.frames)&31u;
+        // Float-rounded durations must not retain an extra boundary frame
+        // solely because a nominal half-second sum is a few nanoseconds low.
+        if (ps2Fps.elapsed - ps2Fps.history[oldest] < 0.5 - 0.0000001) break;
+        ps2Fps.elapsed -= ps2Fps.history[oldest];
+        --ps2Fps.frames;
+    }
+#endif
 
     // Wait for some milliseconds...
 #if !defined(PLATFORM_PLAYSTATION2)
@@ -1687,6 +1719,10 @@ int GetFPS(void)
     int fps = 0;
 
 #if !SUPPORT_CUSTOM_FRAME_CONTROL
+    #if defined(PLATFORM_PLAYSTATION2)
+    if (ps2Fps.elapsed > 0.0)
+        fps = (int)((float)ps2Fps.frames/(float)ps2Fps.elapsed + 0.5f);
+    #else
     #define FPS_CAPTURE_FRAMES_COUNT    30      // 30 captures
     #define FPS_AVERAGE_TIME_SECONDS   0.5f     // 500 milliseconds
     #define FPS_STEP (FPS_AVERAGE_TIME_SECONDS/FPS_CAPTURE_FRAMES_COUNT)
@@ -1720,6 +1756,7 @@ int GetFPS(void)
         fps = (int)roundf(1.0f/average);
     }
     else fps = 0;
+    #endif
 #endif
 
     return fps;

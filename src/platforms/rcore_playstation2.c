@@ -69,6 +69,10 @@
 #include <ps2gl/glcontext.h>
 #include <GL/ps2gl.h>   /* pglTexImageTakeOwnership (texture image-buffer ownership) */
 
+#ifndef RL_PS2_NONBLOCKING_PAD
+#define RL_PS2_NONBLOCKING_PAD 1
+#endif
+
 
 static char padBuf[256] __attribute__((aligned(64)));
 static char actAlign[6];
@@ -426,11 +430,9 @@ void SwapScreenBuffer(void)
     {
         firstTime = false;
     }
-    for (int i = 0; i < gVBlankDivisor; ++i)
-    {
-        pglWaitForVSync();
-    }
-    pglSwapBuffers();
+    // Join the previous submission's flip, which can already have happened
+    // while the EE built this packet. Send arms the next IRQ presentation.
+    pglSwapBuffersOnVSync((unsigned int)gVBlankDivisor);
     pglRenderGeometry();
 }
 
@@ -534,6 +536,39 @@ void PollInputEvents(void)
 
 
 
+#if RL_PS2_NONBLOCKING_PAD
+    // Advance edge history once, even when this frame has no readable sample.
+    for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++)
+        CORE.Input.Gamepad.previousButtonState[port][k] = CORE.Input.Gamepad.currentButtonState[port][k];
+
+    CORE.Input.Gamepad.ready[port] = false;
+    new_pad = 0;
+    int ret = padGetState(port, slot);
+    if (ret != PAD_STATE_STABLE && ret != PAD_STATE_FINDCTP1)
+    {
+        // EXECCMD is a transient command, not a disconnected controller.
+        // Keep its last sample so a held button does not become a fresh press.
+        // An absent/searching/failed controller releases its cached state;
+        // the first valid reconnect sample can then produce normal new edges.
+        if (ret != PAD_STATE_EXECCMD)
+        {
+            memset(CORE.Input.Gamepad.currentButtonState[port], 0, sizeof(CORE.Input.Gamepad.currentButtonState[port]));
+            memset(CORE.Input.Gamepad.axisState[port], 0, sizeof(CORE.Input.Gamepad.axisState[port]));
+            memset(&buttons, 0, sizeof(buttons));
+            paddata = 0;
+            old_pad = 0;
+        }
+        return;
+    }
+
+    // A successful libpad call may initially leave mode zero. Publish only a
+    // populated sample; otherwise retain history and retry on the next frame.
+    struct padButtonStatus sample = {0};
+    ret = padRead(port, slot, &sample);
+    if (ret == 0 || sample.mode == 0) return;
+    buttons = sample;
+    CORE.Input.Gamepad.ready[port] = true;
+#else
     int ret=padGetState(port, slot);
     while((ret != PAD_STATE_STABLE) && (ret != PAD_STATE_FINDCTP1))
     {
@@ -551,6 +586,7 @@ void PollInputEvents(void)
 
 
     ret = padRead(port, slot, &buttons); // port, slot, buttons
+#endif
 
     if (ret != 0)
     {
@@ -1084,7 +1120,8 @@ int InitPlatform(void)
         return -1;
     }
 
-    TRACELOG(LOG_INFO, "[ CANARY ] Initializing MODIFIED LOCAL raylib %s [2026.09.13 00:11]", RAYLIB_VERSION);
+    TRACELOG(LOG_INFO, "[ CANARY ] Initializing MODIFIED LOCAL raylib %s [2026.09.23 10:42]", RAYLIB_VERSION);
+    TRACELOG(LOG_INFO, "PS2 gamepad polling: nonblocking=%d", RL_PS2_NONBLOCKING_PAD);
     TRACELOG(LOG_INFO, "Platform backend: PLAYSTATION2");
     TRACELOG(LOG_INFO, "PLATFORM: PlayStation 2 init");
     bool pal = false;
